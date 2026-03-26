@@ -50,17 +50,19 @@ class LLMFilter(Filter):
 		self.script_processor.process_all(graph)
 
 		# 3. process classes
-		self.structure_processor.process_all(graph)
+		# self.structure_processor.process_all(graph)
 
 		# 4. process variables for SecDFD (v2 variable semantics)
 		if self.secdfd_enabled:
-			self.variable_processor.process_all(graph)
+			print('START SecDFD PROCESSING')
+			# self.variable_processor.process_all(graph)
+			print('END SecDFD PROCESSING')
 
 		# 5. process packages
-		self.component_processor.process_all(graph)
+		# self.component_processor.process_all(graph)
 
 		# 6. process interactions
-		self.interaction_processor.process_all(graph)
+		# self.interaction_processor.process_all(graph)
 
 		return graph
 
@@ -128,7 +130,7 @@ class LLMFilter(Filter):
 		log_file.write(prompt)
 		log_file.write('\n\n======\n\n')
 
-		description = generate_text(prompt)
+		description = self.client.generate_text(prompt)
 		pkg1_edge = Edge(source=c1.id, target=c2.id, label="dependsOn", description=description) if dep_info else None
 
 		if pkg1_edge:

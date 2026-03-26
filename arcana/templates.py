@@ -105,7 +105,8 @@ script_description = {
 		"returns",
 		"stereotype",
 		"stereotypeReason",
-		"secdfdTypes"
+		"secdfdTypes",
+        "secdfdEvidence"
 	],
 	"additionalProperties": False
 }
@@ -228,6 +229,10 @@ analyze_component_tool = {
 		"description": "Analyzes a software component/package by examining its contents. Returns an explanation including a description of component/package responsibility, a descriptive title, a list of keywords, the selected architectural layer, and the rationale for that layer.",
 		"parameters": component_description
 	}
+}
+
+get_asset_keywords_tool = {
+    "type": 'function'
 }
 
 interaction_analysis = '''## Input:

@@ -1,5 +1,6 @@
 *.jsonl
 *.log
 *.ini
+*.pyc
 .*
 !.gitignore

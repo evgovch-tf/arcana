@@ -74,7 +74,7 @@ def default_secdfd_types():
 		("DataStore", "Represents persisted storage or a data access boundary."),
 		("Process", "Represents non-trivial computation or orchestration logic."),
 		("Asset", "Represents data objects with business or security value."),
-		("Flow", "Represents data transfer across operations or boundaries."),
+		# ("Flow", "Represents data transfer across operations or boundaries."),
 	])
 
 

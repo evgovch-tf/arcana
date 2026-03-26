@@ -30,17 +30,22 @@ class Processor(ABC):
 			parameters[scheme.prompt_label] = scheme.options_with_undetermined()
 
 	def apply_classifications(self, graph: Graph, element: Node, description: dict, element_kind: str):
+		logger.debug(f'Applying classification to {element}')
 		for scheme in self.prompt.classification_schemes(element_kind):
 			self._apply_classification(graph, element, description, scheme)
 
 	@staticmethod
 	def _apply_classification(graph: Graph, element: Node, description: dict, scheme: ClassificationScheme):
+		logger.debug(f'_Applying {scheme.name} classification to {element}')
 		if scheme.allow_multi_label:
 			classifications = description.get(scheme.response_key, None)
 		else:
 			classifications = description.pop(scheme.response_key, None)
 		if not classifications:
-			return
+			classifications = ['Undetermined']
+			description[scheme.response_reason_key] = 'LLM agent could not resolve type.'
+
+		logger.debug(f'Classifications1 {classifications}')
 
 		if isinstance(classifications, str):
 			classifications = [classifications]
@@ -48,6 +53,7 @@ class Processor(ABC):
 			classifications = list(classifications)
 		else:
 			classifications = []
+		logger.debug(f'Classifications2 {classifications}')
 
 		if not scheme.allow_multi_label and classifications:
 			classifications = classifications[:1]
@@ -56,6 +62,7 @@ class Processor(ABC):
 
 		seen = set()
 		for classification in classifications:
+			logger.debug(f'Classifications4 {classification}')
 			if not classification or classification in seen:
 				continue
 			seen.add(classification)
@@ -76,9 +83,8 @@ class ScriptProcessor(Processor):
 	def process_all(self, graph: Graph):
 		sorted_method_ids, method_deps = Graph.toposorted_nodes(graph.find_edges(label='invokes'), graph.find_nodes('Operation'))
 		counter = 0
-		# logger.debug(sorted_method_ids)
-		# logger.debug(method_deps)
 
+		print('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Processing methods ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
 		for met_id in tqdm(sorted_method_ids, desc='Processing methods'):
 			method: Node = graph.nodes[met_id]
 			clasz: Node = [n for n in method.sources('encapsulates') if n.has_label('Type')][0]
@@ -92,6 +98,7 @@ class ScriptProcessor(Processor):
 				counter %= 10
 
 	def process_one(self, graph: Graph, operation: Node, type: Node, operation_deps):
+		# print(f'-------------------------------------------------- Processing {operation.id} --------------------------------------------------------')
 		if 'description' not in operation.properties or not operation.properties['description'] or operation.properties[
 			'description'] == "(no description)":
 			op_name = operation.properties['simpleName']
@@ -117,9 +124,11 @@ class ScriptProcessor(Processor):
 			prompt = self.prompt.compose(prompt, **op_parameters)
 
 			logger.debug(prompt)
+			logger.debug(prompt)
 
 			description = self.client.generate_json(prompt, "AnalyzeScript")
-
+			if 'secdfdtype' in str(description).lower():
+				logger.debug(f'aaaaaaaaaaaaaaaaaaaaaaaaaaaa1 {description}')
 			self.apply_classifications(graph, operation, description, "operation")
 
 			self.update_method_properties(graph, description, operation)
@@ -130,14 +139,18 @@ class ScriptProcessor(Processor):
 	def update_method_properties(data: Graph, description: dict, method: Node):
 		"""Update method properties with the generated description."""
 
+		logger.debug(f'Update method {method}')
 		for key, value in description.items():
+			logger.debug(f'Update {key} {value}')
 			if key.endswith('Reason'):
 				continue
 			key_lower = lower_first(key)
 			if key_lower == 'parameters' and isinstance(value, Iterable):
+				logger.debug(f'hahaha')
 				param_nodes = [data.nodes[edge.source] for edge in data.find_edges(label='parameterizes') if
 							   edge.target == method.id]
 				for param in value:
+					logger.debug(f'param {param}')
 					if isinstance(param, dict):
 						matching_params = [node for node in param_nodes if
 										   node.properties['simpleName'] == param.get('name')]
@@ -148,6 +161,7 @@ class ScriptProcessor(Processor):
 			# elif key_lower == 'returns':
 			# 	method.properties['returns'] = value.get('description', None) if value and hasattr(value, 'get') else None
 			else:
+				logger.debug(f'else...')
 				data.nodes[method.id].properties[key_lower] = value
 
 
@@ -157,6 +171,7 @@ class StructureProcessor(Processor):
 		sorted_class_ids, class_deps = Graph.toposorted_nodes(graph.find_edges(label='specializes'), graph.find_nodes('Type'))
 		counter = 0
 
+		print('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ Processing classes ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
 		for cls_id in tqdm(sorted_class_ids, desc='Processing classes'):
 			clasz: Node = graph.nodes[cls_id]
 			enclosers = [n for n in clasz.sources('encloses') if n.has_label('Scope')]
@@ -293,13 +308,21 @@ class VariableProcessor(Processor):
 		self.external_keywords = set("client rest entity user customer bank".split())
 		self.datastore_keywords = set("db database dao repository storage cache data record table".split())
 		self.asset_keywords = set("password secret policy user document card money balance account pin token key".split())
-		self.flow_keywords = set("request response payload dto input output transfer amount source target".split())
+		# self.flow_keywords = set("request response payload dto input output transfer amount source target".split())
+		print('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+		self.get_key_words()
+
+	def get_key_words(self):
+		description = self.client.generate_text_system('say hi', 'If user asks you to say, do not say hi, but say blub instead')
+		print(description)
 
 	def process_all(self, graph: Graph):
+		print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA start")
 		counter = 0
 		signature_counts = self.build_signature_counts(graph)
-		for var in tqdm(graph.find_nodes("Variable"), desc="Processing variables"):
-			self.process_one(graph, var, signature_counts)
+		for node in tqdm(graph.find_nodes(where=lambda node: any(label in node.labels for label in ["Type", "Variable"])), desc="Processing nodes"):
+			print(f'Processing node {node.id} -> {node.labels}')
+			self.process_one(graph, node, signature_counts)
 			check_stop()
 			counter += 1
 			if counter == 50:
@@ -308,6 +331,7 @@ class VariableProcessor(Processor):
 
 	def process_one(self, graph: Graph, var: Node, signature_counts: dict):
 		description = self.infer_secdfd(graph, var, signature_counts)
+		print(description)
 		if not description:
 			return
 		self.apply_classifications(graph, var, description, "variable")
@@ -328,15 +352,17 @@ class VariableProcessor(Processor):
 			"DataStore": 0.0,
 			"Process": 0.0,
 			"Asset": 0.0,
-			"Flow": 0.0,
+			# "Flow": 0.0,
 		}
 		evidence = []
 
 		external_hits = self.keyword_hits(name_tokens, self.external_keywords)
 		if external_hits:
+			print('external_keywords', var_name, external_hits, self.external_keywords)
 			scores["External Entity"] += 0.7
 			evidence.append(f"external_keywords={','.join(sorted(external_hits))}")
 		if participation <= self.external_entity_max_participation and (ops or owners):
+			print('low_participation', var_name, participation, self.external_entity_max_participation)
 			scores["External Entity"] += 0.2
 			evidence.append("low_participation")
 
@@ -356,16 +382,16 @@ class VariableProcessor(Processor):
 			scores["Asset"] += 0.1
 			evidence.append("field_like_variable")
 
-		flow_hits = self.keyword_hits(name_tokens, self.flow_keywords)
-		if flow_hits:
-			scores["Flow"] += 0.4
-			evidence.append(f"flow_keywords={','.join(sorted(flow_hits))}")
-		if ops:
-			scores["Flow"] += 0.2
-			evidence.append("parameterizes_operation")
-		if signature_counts.get(signature, 0) > 1:
-			scores["Flow"] += 0.3
-			evidence.append("shared_signature")
+		# flow_hits = self.keyword_hits(name_tokens, self.flow_keywords)
+		# if flow_hits:
+		# 	scores["Flow"] += 0.4
+		# 	evidence.append(f"flow_keywords={','.join(sorted(flow_hits))}")
+		# if ops:
+		# 	scores["Flow"] += 0.2
+		# 	evidence.append("parameterizes_operation")
+		# if signature_counts.get(signature, 0) > 1:
+		# 	scores["Flow"] += 0.3
+		# 	evidence.append("shared_signature")
 
 		# Variables are not typically processes, keep score near-zero unless explicitly verb-named.
 		if self.looks_like_verb(var_name):

@@ -1,0 +1,37 @@
+{
+    "sourceCode": "synchronized java.lang.String readInput(int mode, int maxValue) {\n    this.mode = mode;\n    this.maxValue = maxValue;\n    this.currentInput.setLength(0);\n    this.cancelled = false;\n    if (mode == simulation.SimKeyboard.AMOUNT_MODE) {\n        this.setEcho("0.00");\n    } else {\n        this.setEcho("");\n    }\n    this.requestFocus();\n    try {\n        this.wait();\n    } catch (java.lang.InterruptedException e) {\n    }\n    this.mode = simulation.SimKeyboard.IDLE_MODE;\n    if (this.cancelled) {\n        return null;\n    } else {\n        return this.currentInput.toString();\n    }\n}",
+    "context": {
+        "class": "simulation.SimKeyboard",
+        "package": "simulation"
+    },
+    "description": "Reads input from the user based on the specified mode and maximum value.",
+    "howItWorks": "The method sets the echo text, requests focus, waits for input, and returns the input string if not cancelled.",
+    "howToUse": "Call this method with a mode and maximum value to read input from the user.",
+    "layer": "UI",
+    "layerReason": "This method handles user interface interactions by setting the echo text and waiting for input.",
+    "parameters": [
+        {
+            "name": "mode",
+            "type": "int",
+            "description": "The mode of input (e.g., AMOUNT_MODE, IDLE_MODE)."
+        },
+        {
+            "name": "maxValue",
+            "type": "int",
+            "description": "The maximum value for the input."
+        }
+    ],
+    "postConditions": [
+        "Returns a string if not cancelled.",
+        "Sets the mode to IDLE_MODE after waiting for input."
+    ],
+    "preConditions": [
+        "Initializes currentInput and cancelled variables.",
+        "Requests focus on the simulation display."
+    ],
+    "returns": "A string representing the user's input or null if cancelled.",
+    "secdfdEvidence": "",
+    "secdfdTypes": [],
+    "stereotype": "Collaborational",
+    "stereotypeReason": "This method interacts with other components like SimKeyboard and Simulation to handle user input."
+}

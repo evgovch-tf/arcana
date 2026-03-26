@@ -59,6 +59,8 @@ def main():
 	}
 
 	commands = args.command.split('-')
+	print('hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh')
+	print(commands)
 
 	if commands:
 		current_time_str = time.strftime("%Y%m%d-%H%M%S")

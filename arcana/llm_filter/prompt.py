@@ -4,6 +4,9 @@ from arcana.utils import remove_author, sentence
 from arcana.llm_filter.classification import ClassificationScheme
 from arcanalib.graph import Graph, Node
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 class PromptBuilder:
 	def __init__(self, project_cfg, classifications=None):
@@ -26,6 +29,7 @@ class PromptBuilder:
 		return [scheme for scheme in schemes if element_kind in scheme.applies_to]
 
 	def initialize_classifications(self, graph: Graph):
+		logger.debug("Initialize classifications")
 		for scheme in self.classification_schemes():
 			dimension = graph.add_node(
 				scheme.dimension_id,
